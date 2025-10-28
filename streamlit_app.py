@@ -13,28 +13,20 @@ st.set_page_config(page_title="Compliance Tracker & Nudge Bot", layout="wide")
 st.markdown(
     """
     <style>
-    body {
+    body, .stApp {
         background-color: #e6f7e6 !important; /* Light green background */
+        font-family: 'Poppins', sans-serif;
     }
-    .main {
-        background-color: #e6f7e6 !important;
-    }
-    .stApp {
-        background-color: #e6f7e6 !important;
-    }
-    
     h1, h2, h3, h4, h5, h6 {
         color: #004d00 !important;
         text-align: center;
         font-family: 'Poppins', sans-serif;
     }
-
     .stDataFrame table {
         border-collapse: collapse;
         width: 100%;
         table-layout: fixed;
     }
-
     .stDataFrame table th, .stDataFrame table td {
         border: 1px solid #b3d9b3;
         padding: 8px;
@@ -43,12 +35,24 @@ st.markdown(
         overflow: hidden;
         text-overflow: ellipsis;
     }
-
     .stDataFrame table th {
         background-color: #ccffcc;
         color: #004d00;
     }
-
+    .white-card {
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0px 2px 8px rgba(0,0,0,0.1);
+        margin-top: 15px;
+    }
+    .filter-box {
+        background-color: #ccffcc;
+        padding: 10px;
+        border-radius: 10px;
+        box-shadow: 0px 2px 6px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
     .badge {
         border-radius: 12px;
         padding: 5px 10px;
@@ -58,15 +62,8 @@ st.markdown(
     .Gold {background-color: gold;}
     .Silver {background-color: silver;}
     .Bronze {background-color: #cd7f32;}
-
-    .filter-box {
-        background-color: #ccffcc;
-        padding: 10px;
-        border-radius: 10px;
-        box-shadow: 0px 2px 6px rgba(0,0,0,0.1);
-        margin-bottom: 20px;
-    }
     </style>
+
     <script>
     function showConfetti() {
         const duration = 2000;
@@ -138,11 +135,8 @@ if badge_filter != "All":
 # DISPLAY TABLE
 # =========================
 st.markdown("### 📊 Compliance Leaderboard")
-
 st.dataframe(
-    filtered_df.style.format({"Completion Rate (%)": "{:.0f}%"})
-    .apply(lambda x: [f"background-color: #ccffcc"] * len(x), axis=1)
-    .hide(axis="index"),
+    filtered_df.style.format({"Completion Rate (%)": "{:.0f}%"}).hide(axis="index"),
     use_container_width=True,
 )
 
@@ -150,9 +144,45 @@ st.dataframe(
 # SUMMARY SECTION
 # =========================
 st.markdown("### 🧩 Summary Insights")
-col1, col2, col3 = st.columns(3)
-col1.metric("Average Completion Rate", f"{filtered_df['Completion Rate (%)'].mean():.1f}%")
-col2.metric("Total Points", int(filtered_df['Points'].sum()))
-col3.metric("Gold Members", len(filtered_df[filtered_df['Badge'] == 'Gold']))
+with st.container():
+    st.markdown('<div class="white-card">', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Average Completion Rate", f"{filtered_df['Completion Rate (%)'].mean():.1f}%")
+    col2.metric("Total Points", int(filtered_df['Points'].sum()))
+    col3.metric("Gold Members", len(filtered_df[filtered_df['Badge'] == 'Gold']))
+    st.markdown('</div>', unsafe_allow_html=True)
 
-st.success("✅ Table fixed layout applied and background turned light green for easier viewing.")
+# =========================
+# CHAT + NUDGE CENTER
+# =========================
+st.markdown("### 💬 AI Coach & Nudge Center")
+with st.container():
+    st.markdown('<div class="white-card">', unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+
+    # Chat Demo
+    with col1:
+        st.subheader("🤖 Chat Demo")
+        chat_input = st.text_input("Ask the AI Coach something:")
+        if chat_input:
+            if any(word in chat_input.lower() for word in ["compliance", "training", "nudge", "alert"]):
+                st.success("🧠 AI Coach: Please ensure your team completes training by tomorrow! ✅")
+            else:
+                st.warning("No answer related question.")
+        else:
+            st.info("Type something to chat with your AI Coach!")
+
+    # Send Nudge Demo
+    with col2:
+        st.subheader("✉️ Send Nudge Demo")
+        recipient = st.selectbox("Select Employee", filtered_df["Name"].unique())
+        if st.button("Send Nudge"):
+            st.success(f"✅ Nudge sent to {recipient}! (Simulated)")
+            st.balloons()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# =========================
+# FOOTER
+# =========================
+st.markdown("---")
+st.caption("© 2025 Compliance Tracker & Nudge Bot (Demo) | Built with Streamlit by HR Team")
