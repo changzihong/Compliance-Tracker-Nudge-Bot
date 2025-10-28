@@ -1,15 +1,14 @@
 """
-Streamlit Demo: Compliance Tracker & Nudge Bot (Enhanced UI Version)
+Streamlit Demo: Compliance Tracker & Nudge Bot (Enhanced UI + Filters)
 Features:
-- Modern CSS styling and embedded JS animations.
-- Department dashboard with completion, badges, leaderboard.
-- Simulated nudges and predictive risk scoring.
+- Modern CSS + JS animations
+- Filter controls for department, points, and badge type
+- Dashboard metrics, leaderboard, and simulated nudges
 """
 
 import streamlit as st
 import pandas as pd
 import numpy as np
-from datetime import datetime
 import random
 import uuid
 import textwrap
@@ -82,14 +81,38 @@ def create_data():
                 'points': random.randint(0, 20),
                 'due_in_days': random.randint(-20, 60)
             })
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    df['badge'] = np.where(df['points']>=15,'Gold', np.where(df['points']>=8,'Silver', np.where(df['points']>0,'Bronze','')))
+    return df
 
 df = create_data()
+
+# ----------------------
+# Filtering Function
+# ----------------------
+def filter_data(df, dept=None, points=None, badge=None):
+    """Filters the dataset based on department, points range, and badge selection."""
+    filtered = df.copy()
+    if dept:
+        filtered = filtered[filtered['department'].isin(dept)]
+    if points:
+        min_p, max_p = points
+        filtered = filtered[(filtered['points'] >= min_p) & (filtered['points'] <= max_p)]
+    if badge and badge != 'All':
+        filtered = filtered[filtered['badge'] == badge]
+    return filtered
 
 # ----------------------
 # UI Layout
 # ----------------------
 left, mid, right = st.columns([1,2,1])
+
+with left:
+    st.markdown("### 🔍 Filters")
+    selected_dept = st.multiselect("Department", options=df['department'].unique(), default=['HR'])
+    point_range = st.slider("Points Range", 0, 20, (0, 20))
+    badge_filter = st.selectbox("Badge Type", options=['All', 'Gold', 'Silver', 'Bronze'])
+    df_filtered = filter_data(df, selected_dept, point_range, badge_filter)
 
 with mid:
     st.markdown("<div class='main-title'>Compliance Tracker & Nudge Bot — Demo</div>", unsafe_allow_html=True)
@@ -97,21 +120,24 @@ with mid:
     st.markdown("<hr>", unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns(3)
-    col1.markdown(f"<div class='metric-card'><div class='metric-label'>Employees</div><div class='metric-value'>{len(df)}</div></div>", unsafe_allow_html=True)
-    completion_rate = (df['completed'].mean() * 100).round(1)
+    col1.markdown(f"<div class='metric-card'><div class='metric-label'>Employees</div><div class='metric-value'>{len(df_filtered)}</div></div>", unsafe_allow_html=True)
+    completion_rate = (df_filtered['completed'].mean() * 100).round(1) if len(df_filtered)>0 else 0
     col2.markdown(f"<div class='metric-card'><div class='metric-label'>Completion Rate</div><div class='metric-value'>{completion_rate}%</div></div>", unsafe_allow_html=True)
-    overdue = (df['due_in_days']<0).sum()
+    overdue = (df_filtered['due_in_days']<0).sum()
     col3.markdown(f"<div class='metric-card'><div class='metric-label'>Overdue</div><div class='metric-value'>{overdue}</div></div>", unsafe_allow_html=True)
 
-    st.markdown("<div class='section-title'>Leaderboard</div>", unsafe_allow_html=True)
-    df['badge'] = np.where(df['points']>=15,'<span class="badge-gold">Gold</span>',
-                    np.where(df['points']>=8,'<span class="badge-silver">Silver</span>',
-                    np.where(df['points']>0,'<span class="badge-bronze">Bronze</span>','')))
-    st.markdown(df[['name','department','points','badge']].to_html(escape=False, index=False), unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>Leaderboard (Filtered)</div>", unsafe_allow_html=True)
+    df_filtered['badge_html'] = df_filtered['badge'].replace({
+        'Gold': '<span class="badge-gold">Gold</span>',
+        'Silver': '<span class="badge-silver">Silver</span>',
+        'Bronze': '<span class="badge-bronze">Bronze</span>',
+        '': ''
+    })
+    st.markdown(df_filtered[['name','department','points','badge_html']].to_html(escape=False, index=False), unsafe_allow_html=True)
 
     st.markdown("<div class='section-title'>Simulated Nudge</div>", unsafe_allow_html=True)
-    emp = st.selectbox("Choose employee", df['name'])
-    if st.button("Send Demo Nudge"):
+    emp = st.selectbox("Choose employee", df_filtered['name'] if len(df_filtered)>0 else [])
+    if st.button("Send Demo Nudge") and emp:
         st.success(f"Nudge sent to {emp} (simulated)")
         components.html("<script>notifyUser('✅ Nudge sent successfully!'); pulseTitle();</script>", height=0)
 
@@ -127,8 +153,10 @@ with right:
 st.markdown("---")
 with st.expander("Developer Notes"):
     st.markdown(textwrap.dedent('''
-    - CSS redesigned with gradients and clean cards.
-    - JS adds pulse animation and notifications.
-    - Confetti could be added on badge awards.
-    - Extend this to integrate with Supabase, Slack, or SMTP.
+    **What’s New:**
+    - Added filter controls for Department, Points range, and Badge type.
+    - `filter_data()` function dynamically narrows dataset views.
+    - Helps HR easily focus (e.g., “HR department only”, “Gold badge earners”).
+    - Filters instantly refresh dashboard and leaderboard metrics.
+    - JS + CSS enhancements improve user feedback and visuals.
     '''))
